@@ -2008,3 +2008,24 @@ function updateSceneDatar(shape) {
 updateScene();
 function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
 animate();
+
+// ===================== AUTOPLAY BGM HACK =====================
+const bgmAudio = document.getElementById('bgm-audio');
+
+if (bgmAudio) {
+    bgmAudio.volume = 0.4; // Volume diset santai 40%
+
+    // Fungsi rahasia untuk memutar musik
+    const startMusic = () => {
+        bgmAudio.play().then(() => {
+            document.removeEventListener('click', startMusic);
+            document.removeEventListener('touchstart', startMusic);
+        }).catch((err) => {
+            console.log("Menunggu interaksi user untuk memutar musik...");
+        });
+    };
+
+    // Pasang "pengintip" klik atau sentuhan di seluruh halaman
+    document.addEventListener('click', startMusic);
+    document.addEventListener('touchstart', startMusic);
+}
