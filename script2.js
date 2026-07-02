@@ -1459,6 +1459,59 @@ function buildBoxDatar(W, D, H, p_net, p_luas, baseColorHex) {
     const a90 = u * Math.PI / 2;
     const totalFaces = 6;
     const matAt = idx => faceMaterial(baseColorHex, p_luas, opacity, idx, totalFaces);
+
+    if (n === 3) {
+        const u = clamp01(p_net);
+        const P = pts.map(p => ({ x:p.x, y:-hh, z:p.z }));
+        const Q = pts.map(p => ({ x:p.x, y: hh, z:p.z }));
+
+        addFaceToGroup(group, makeTriFromPoints(P[0], P[1], P[2]), matAt(0), isTrans);
+
+        const A = P[0], B = P[1], QA = Q[0], QB = Q[1];
+        const mx = (A.x + B.x) / 2, mz = (A.z + B.z) / 2;
+        const len = Math.sqrt(mx*mx + mz*mz) || 1;
+        const nx = mx / len, nz = mz / len;
+        const Co = { x:B.x + nx*t, y:-hh, z:B.z + nz*t };
+        const Do = { x:A.x + nx*t, y:-hh, z:A.z + nz*t };
+        const sideFoldAngle = signedAngleAroundAxis(QB, A, B, Co);
+        const carryFromMain = p => rotatePointAroundAxis(p, A, B, sideFoldAngle * u);
+
+        const TA = rotatePointTowardAroundAxis(QA, A, B, Do, u);
+        const TB = rotatePointTowardAroundAxis(QB, A, B, Co, u);
+        addFaceToGroup(group, makeQuadFromPoints(A, B, TB, TA), matAt(1), isTrans);
+
+        const edgeDir = pointToVector(B).sub(pointToVector(A)).normalize();
+        const rightDir = { x:edgeDir.x, y:0, z:edgeDir.z };
+        const leftDir = { x:-edgeDir.x, y:0, z:-edgeDir.z };
+        const rightBaseTarget = { x:B.x + rightDir.x*a, y:B.y, z:B.z + rightDir.z*a };
+        const rightTopTarget = { x:TB.x + rightDir.x*a, y:TB.y, z:TB.z + rightDir.z*a };
+        const leftBaseTarget = { x:A.x + leftDir.x*a, y:A.y, z:A.z + leftDir.z*a };
+        const leftTopTarget = { x:TA.x + leftDir.x*a, y:TA.y, z:TA.z + leftDir.z*a };
+
+        const P2Carried = carryFromMain(P[2]);
+        const Q2Carried = carryFromMain(Q[2]);
+        const rightBase = rotatePointTowardAroundAxis(P2Carried, B, TB, rightBaseTarget, u);
+        const rightTop = rotatePointTowardAroundAxis(Q2Carried, B, TB, rightTopTarget, u);
+        addFaceToGroup(group, makeQuadFromPoints(B, rightBase, rightTop, TB), matAt(2), isTrans);
+
+        const leftBase = rotatePointTowardAroundAxis(P2Carried, A, TA, leftBaseTarget, u);
+        const leftTop = rotatePointTowardAroundAxis(Q2Carried, A, TA, leftTopTarget, u);
+        addFaceToGroup(group, makeQuadFromPoints(leftBase, A, TA, leftTop), matAt(3), isTrans);
+
+        const topMid = midpoint3(TA, TB);
+        const outVec = pointToVector(TA).sub(pointToVector(A)).normalize();
+        const triHeight = Math.sqrt(Math.max(0, a*a - (a/2)*(a/2)));
+        const topTipTarget = {
+            x: topMid.x + outVec.x * triHeight,
+            y: topMid.y + outVec.y * triHeight,
+            z: topMid.z + outVec.z * triHeight
+        };
+        const topTip = rotatePointTowardAroundAxis(Q2Carried, TA, TB, topTipTarget, u);
+        addFaceToGroup(group, makeTriFromPoints(TA, TB, topTip), matAt(4), isTrans);
+
+        datarGroup.add(group);
+        return { R, apothem, pts };
+    }
     const C = {
         c000:{x:-hw,y:-hh,z:-hd}, c100:{x:hw,y:-hh,z:-hd}, c010:{x:-hw,y:hh,z:-hd}, c110:{x:hw,y:hh,z:-hd},
         c001:{x:-hw,y:-hh,z:hd}, c101:{x:hw,y:-hh,z:hd}, c011:{x:-hw,y:hh,z:hd}, c111:{x:hw,y:hh,z:hd}
@@ -1529,24 +1582,65 @@ function buildPrismaDatar(n, a, t, p_net, p_luas, baseColorHex) {
     const group = new THREE.Group();
     const totalFaces = n + 2;
     const matAt = idx => faceMaterial(baseColorHex, p_luas, opacity, idx, totalFaces);
+
+    if (n === 3) {
+        const u = clamp01(p_net);
+        const P = pts.map(p => ({ x:p.x, y:-hh, z:p.z }));
+        const Q = pts.map(p => ({ x:p.x, y: hh, z:p.z }));
+        const A = P[0], B = P[1], C = P[2];
+        const At = Q[0], Bt = Q[1], Ct = Q[2];
+
+        const edge = pointToVector(B).sub(pointToVector(A));
+        const edgeDir = edge.clone().normalize();
+        const heightDir = pointToVector(At).sub(pointToVector(A)).normalize();
+        const triHeight = Math.sqrt(Math.max(0, a*a - (a/2)*(a/2)));
+
+        // Satu sisi persegi panjang ini menjadi poros utama dan tetap diam saat jaring-jaring dibuka.
+        addFaceToGroup(group, makeQuadFromPoints(A, B, Bt, At), matAt(1), isTrans);
+
+        const rightBaseTarget = { x:B.x + edgeDir.x*a, y:B.y + edgeDir.y*a, z:B.z + edgeDir.z*a };
+        const rightTopTarget = { x:Bt.x + edgeDir.x*a, y:Bt.y + edgeDir.y*a, z:Bt.z + edgeDir.z*a };
+        const rightBase = rotatePointTowardAroundAxis(C, B, Bt, rightBaseTarget, u);
+        const rightTop = rotatePointTowardAroundAxis(Ct, B, Bt, rightTopTarget, u);
+        addFaceToGroup(group, makeQuadFromPoints(B, rightBase, rightTop, Bt), matAt(2), isTrans);
+
+        const leftBaseTarget = { x:A.x - edgeDir.x*a, y:A.y - edgeDir.y*a, z:A.z - edgeDir.z*a };
+        const leftTopTarget = { x:At.x - edgeDir.x*a, y:At.y - edgeDir.y*a, z:At.z - edgeDir.z*a };
+        const leftBase = rotatePointTowardAroundAxis(C, A, At, leftBaseTarget, u);
+        const leftTop = rotatePointTowardAroundAxis(Ct, A, At, leftTopTarget, u);
+        addFaceToGroup(group, makeQuadFromPoints(leftBase, A, At, leftTop), matAt(3), isTrans);
+
+        const bottomMid = midpoint3(A, B);
+        const bottomTipTarget = {
+            x: bottomMid.x - heightDir.x*triHeight,
+            y: bottomMid.y - heightDir.y*triHeight,
+            z: bottomMid.z - heightDir.z*triHeight
+        };
+        const bottomTip = rotatePointTowardAroundAxis(C, A, B, bottomTipTarget, u);
+        addFaceToGroup(group, makeTriFromPoints(A, B, bottomTip), matAt(0), isTrans);
+
+        const topMid = midpoint3(At, Bt);
+        const topTipTarget = {
+            x: topMid.x + heightDir.x*triHeight,
+            y: topMid.y + heightDir.y*triHeight,
+            z: topMid.z + heightDir.z*triHeight
+        };
+        const topTip = rotatePointTowardAroundAxis(Ct, At, Bt, topTipTarget, u);
+        addFaceToGroup(group, makeTriFromPoints(At, Bt, topTip), matAt(4), isTrans);
+
+        datarGroup.add(group);
+        return { R, apothem, pts };
+    }
+
     {
-        let geom;
-        if (n === 3) {
-            geom = makeTriFromPoints(
-                {x:pts[0].x,y:-hh,z:pts[0].z},
-                {x:pts[1].x,y:-hh,z:pts[1].z},
-                {x:pts[2].x,y:-hh,z:pts[2].z}
-            );
-        } else {
-            const positions = [];
-            for (let i = 0; i < n; i++) positions.push({x:0,y:-hh,z:0}, {x:pts[i].x,y:-hh,z:pts[i].z}, {x:pts[(i+1)%n].x,y:-hh,z:pts[(i+1)%n].z});
-            geom = new THREE.BufferGeometry();
-            const arr = new Float32Array(positions.length*3);
-            positions.forEach((p,idx)=>{ arr[idx*3]=p.x; arr[idx*3+1]=p.y; arr[idx*3+2]=p.z; });
-            geom.setAttribute('position', new THREE.BufferAttribute(arr,3)); geom.computeVertexNormals();
-        }
-        addFaceToGroup(group, geom, matAt(0), isTrans && n === 3);
-        if (n >= 4) addPolygonOutline(group, pts.map(p => ({x:p.x,y:-hh,z:p.z})));
+        const positions = [];
+        for (let i = 0; i < n; i++) positions.push({x:0,y:-hh,z:0}, {x:pts[i].x,y:-hh,z:pts[i].z}, {x:pts[(i+1)%n].x,y:-hh,z:pts[(i+1)%n].z});
+        const geom = new THREE.BufferGeometry();
+        const arr = new Float32Array(positions.length*3);
+        positions.forEach((p,idx)=>{ arr[idx*3]=p.x; arr[idx*3+1]=p.y; arr[idx*3+2]=p.z; });
+        geom.setAttribute('position', new THREE.BufferAttribute(arr,3)); geom.computeVertexNormals();
+        addFaceToGroup(group, geom, matAt(0), false);
+        addPolygonOutline(group, pts.map(p => ({x:p.x,y:-hh,z:p.z})));
     }
     let firstFace = null;
     for (let i = 0; i < n; i++) {
@@ -1565,24 +1659,17 @@ function buildPrismaDatar(n, a, t, p_net, p_luas, baseColorHex) {
         const targetCenter = { x:firstFace.mx, y:hh+apothem, z:firstFace.mz };
         const capLiftAngle = signedAngleAroundAxis({x:0,y:hh,z:0}, edgeTopA, edgeTopB, targetCenter);
         const sideFoldAngle = signedAngleAroundAxis(firstFace.Cc, edgeBotA, edgeBotB, firstFace.Co);
-        if (n === 3) {
-            const folded = pts.map(p => ({x:p.x,y:hh,z:p.z}))
-                .map(p => rotatePointAroundAxis(p, edgeTopA, edgeTopB, capLiftAngle * clamp01(p_net)))
-                .map(p => rotatePointAroundAxis(p, edgeBotA, edgeBotB, sideFoldAngle * clamp01(p_net)));
-            addFaceToGroup(group, makeTriFromPoints(folded[0], folded[1], folded[2]), matAt(n+1), isTrans);
-        } else {
-            const foldedOuter = pts.map(p => ({x:p.x,y:hh,z:p.z}))
-                .map(p => rotatePointAroundAxis(p, edgeTopA, edgeTopB, capLiftAngle * clamp01(p_net)))
-                .map(p => rotatePointAroundAxis(p, edgeBotA, edgeBotB, sideFoldAngle * clamp01(p_net)));
-            const foldedCenter = rotatePointAroundAxis(
-                rotatePointAroundAxis({x:0,y:hh,z:0}, edgeTopA, edgeTopB, capLiftAngle * clamp01(p_net)),
-                edgeBotA, edgeBotB, sideFoldAngle * clamp01(p_net)
-            );
-            for (let i = 0; i < n; i++) {
-                addFaceToGroup(group, makeTriFromPoints(foldedCenter, foldedOuter[i], foldedOuter[(i+1)%n]), matAt(n+1), false);
-            }
-            addPolygonOutline(group, foldedOuter);
+        const foldedOuter = pts.map(p => ({x:p.x,y:hh,z:p.z}))
+            .map(p => rotatePointAroundAxis(p, edgeTopA, edgeTopB, capLiftAngle * clamp01(p_net)))
+            .map(p => rotatePointAroundAxis(p, edgeBotA, edgeBotB, sideFoldAngle * clamp01(p_net)));
+        const foldedCenter = rotatePointAroundAxis(
+            rotatePointAroundAxis({x:0,y:hh,z:0}, edgeTopA, edgeTopB, capLiftAngle * clamp01(p_net)),
+            edgeBotA, edgeBotB, sideFoldAngle * clamp01(p_net)
+        );
+        for (let i = 0; i < n; i++) {
+            addFaceToGroup(group, makeTriFromPoints(foldedCenter, foldedOuter[i], foldedOuter[(i+1)%n]), matAt(n+1), false);
         }
+        addPolygonOutline(group, foldedOuter);
     }
     if (p_net < 0.01 && isTrans && n >= 4) {
         addBaseDiagonalDetails(group, pts, -hh, -1);
