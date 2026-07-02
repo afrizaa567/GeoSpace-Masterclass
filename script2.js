@@ -112,6 +112,27 @@ renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 container.appendChild(renderer.domElement);
 
+function setupBackgroundMusic() {
+    const music = new Audio('./Seven_AM_Sunlight.mp3');
+    music.loop = true;
+    music.volume = 0.5;
+    music.preload = 'auto';
+    let started = false;
+
+    const startMusic = () => {
+        if (started) return;
+        started = true;
+        music.play().catch(() => {
+            started = false;
+        });
+    };
+
+    renderer.domElement.addEventListener('pointerdown', startMusic, { passive: true });
+    renderer.domElement.addEventListener('touchstart', startMusic, { passive: true });
+    renderer.domElement.addEventListener('click', startMusic, { passive: true });
+}
+setupBackgroundMusic();
+
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
@@ -2008,30 +2029,3 @@ function updateSceneDatar(shape) {
 updateScene();
 function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
 animate();
-
-// ===================== AUTOPLAY BGM HACK (SUPERCHARGED) =====================
-const bgmAudio = document.getElementById('bgm-audio');
-
-if (bgmAudio) {
-    bgmAudio.volume = 0.4; // Volume
-
-    // Fungsi rahasia untuk memutar musik
-    const startMusic = () => {
-        bgmAudio.play().then(() => {
-            // Kalau berhasil jalan, hapus semua pengintip biar gak berat
-            window.removeEventListener('click', startMusic);
-            window.removeEventListener('touchstart', startMusic);
-            window.removeEventListener('pointerdown', startMusic); 
-            window.removeEventListener('mousedown', startMusic);
-        }).catch((err) => {
-            console.log("Menunggu interaksi user untuk memutar musik...");
-        });
-    };
-
-    // Kita pasang sensor di 'window' dan tambah pointerdown/mousedown 
-    // biar gak diblokir sama kanvas 3D (OrbitControls)
-    window.addEventListener('click', startMusic);
-    window.addEventListener('touchstart', startMusic);
-    window.addEventListener('pointerdown', startMusic);
-    window.addEventListener('mousedown', startMusic);
-}
