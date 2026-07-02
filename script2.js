@@ -2009,23 +2009,29 @@ updateScene();
 function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
 animate();
 
-// ===================== AUTOPLAY BGM HACK =====================
+// ===================== AUTOPLAY BGM HACK (SUPERCHARGED) =====================
 const bgmAudio = document.getElementById('bgm-audio');
 
 if (bgmAudio) {
-    bgmAudio.volume = 0.4; // Volume diset santai 40%
+    bgmAudio.volume = 0.4; // Volume
 
     // Fungsi rahasia untuk memutar musik
     const startMusic = () => {
         bgmAudio.play().then(() => {
-            document.removeEventListener('click', startMusic);
-            document.removeEventListener('touchstart', startMusic);
+            // Kalau berhasil jalan, hapus semua pengintip biar gak berat
+            window.removeEventListener('click', startMusic);
+            window.removeEventListener('touchstart', startMusic);
+            window.removeEventListener('pointerdown', startMusic); 
+            window.removeEventListener('mousedown', startMusic);
         }).catch((err) => {
             console.log("Menunggu interaksi user untuk memutar musik...");
         });
     };
 
-    // Pasang "pengintip" klik atau sentuhan di seluruh halaman
-    document.addEventListener('click', startMusic);
-    document.addEventListener('touchstart', startMusic);
+    // Kita pasang sensor di 'window' dan tambah pointerdown/mousedown 
+    // biar gak diblokir sama kanvas 3D (OrbitControls)
+    window.addEventListener('click', startMusic);
+    window.addEventListener('touchstart', startMusic);
+    window.addEventListener('pointerdown', startMusic);
+    window.addEventListener('mousedown', startMusic);
 }
