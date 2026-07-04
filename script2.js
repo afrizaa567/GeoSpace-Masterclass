@@ -1120,11 +1120,13 @@ function updateMath(shape, r, t, p_transmute, p_b_vol=0, p_b_lp=0) {
     if (shape === 'tabung') {
         document.getElementById('row-alas').style.display    = 'block';
         document.getElementById('row-selimut').style.display = 'block';
+        document.querySelector('#row-alas .math-title').innerText = "Luas Alas & Tutup";
         la = 2*PI*r*r; ls = 2*PI*r*t; lp = 2*PI*r*(r+t); v = PI*r*r*t;
         DOM.fLa.innerHTML="2πr²"; DOM.fLs.innerHTML="2πrt"; DOM.fLp.innerHTML="2πr(r + t)"; DOM.fV.innerHTML="πr²t";
     } else if (shape === 'kerucut') {
         document.getElementById('row-alas').style.display    = 'block';
         document.getElementById('row-selimut').style.display = 'block';
+        document.querySelector('#row-alas .math-title').innerText = "Luas Alas";
         const s = Math.sqrt(r*r+t*t);
         la=PI*r*r; ls=PI*r*s; lp=PI*r*(r+s); v=(1/3)*PI*r*r*t;
         DOM.fLa.innerHTML="πr²"; DOM.fLs.innerHTML="πrs"; DOM.fLp.innerHTML="πr(r + s)";
